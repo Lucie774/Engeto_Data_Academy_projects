@@ -30,7 +30,7 @@ SELECT
 	YEAR (date_from) AS year
 FROM czechia_price cp
 JOIN czechia_price_category cpc ON cp.category_code = cpc.code 
-GROUP by cpc.name, year;
+GROUP BY cpc.name, year;
 
 
 CREATE OR REPLACE TABLE t_prices_and_salary
@@ -90,11 +90,11 @@ SELECT
 FROM economies e
 JOIN economies e2 ON e.country = e2.country
 				AND e.year = e2.year + 1
-LEFT JOIN countries c on e.country = c.country;
+LEFT JOIN countries c ON e.country = c.country;
 
 
 
--- Rostou v průběhu let mzdy ve všech odvětvích, nebo v některých klesají? odpověď zde
+-- Rostou v průběhu let mzdy ve všech odvětvích, nebo v některých klesají?
 
 SELECT 
 	industry_name, 
@@ -104,14 +104,14 @@ SELECT
 	avg_salary_prev_year 
 FROM t_lucie_swiatkova_project_sql_primary_final
 WHERE yoy_salary_change = 'decrease'
-GROUP by industry_name 
-ORDER by industry_name, current_year;
-
+GROUP BY industry_name 
+ORDER BY salary_change ;
 
 
 -- Kolik je možné si koupit litrů mléka a kilogramů chleba za první a poslední srovnatelné období v dostupných datech cen a mezd?
 
--- Množství za každé jednotlivé odvětví
+-- a) Množství za každé jednotlivé odvětví
+
 SELECT 
 	current_year, 
 	industry_name, 
@@ -124,7 +124,7 @@ GROUP by goods, current_year, industry_name
 ORDER BY current_year, goods, industry_name; 
 
 
--- Průměr mzdy za všechna odvětví
+-- b) Průměr mzdy za všechna odvětví
 SELECT 
 	current_year,
 	goods,
@@ -144,17 +144,7 @@ SELECT
 	yoy_price_change
 FROM t_lucie_swiatkova_project_sql_primary_final 
 GROUP BY goods, current_year
-ORDER BY current_year , yoy_price_change ;
-
-
-SELECT 
-	current_year,
-	min(yoy_price_change)
-FROM t_lucie_swiatkova_project_sql_primary_final
-GROUP BY current_year
-ORDER BY current_year, yoy_price_change ;
-
-
+ORDER BY yoy_price_change, current_year ;
 
 -- Existuje rok, ve kterém byl meziroční nárůst cen potravin výrazně vyšší než růst mezd (větší než 10 %)?
 
@@ -162,13 +152,15 @@ SELECT
 	current_year,
 	round(avg(yoy_price_change),2) AS average_price_change,
 	salary_change, 
+	round((avg(yoy_price_change) - salary_change),1) AS diff_prices_salary_change,
 CASE 
 	WHEN (avg(yoy_price_change) - salary_change) > 10 THEN 'increased_of_prices>10%'
 	WHEN (avg(yoy_price_change) - salary_change) < 10 AND (avg(yoy_price_change) - salary_change) > 0  THEN 'increased_of_prices<10%'
 	ELSE 'salary_increase>prices_increase'
 END AS prices_vs_salary
 FROM t_lucie_swiatkova_project_sql_primary_final
-GROUP BY current_year ;
+GROUP BY current_year 
+ORDER BY diff_prices_salary_change;
 
 -- Má výška HDP vliv na změny ve mzdách a cenách potravin? Neboli, pokud HDP vzroste výrazněji v jednom roce, projeví se to na cenách potravin či mzdách ve stejném nebo násdujícím roce výraznějším růstem?
 
@@ -177,10 +169,10 @@ SELECT
 	t2.country, 
 	t1.current_year,
 	t2.yoy_gdp_change,
-	round(avg(t1.yoy_price_change),2) AS avg_yoy_salary_change,
+	round(avg(t1.yoy_price_change),2) AS avg_yoy_prices_change,
 	t1.salary_change  
 FROM t_lucie_swiatkova_project_SQL_secondary_final t2
 JOIN t_lucie_swiatkova_project_sql_primary_final t1 ON t2.year = t1.current_year 
 WHERE t2.country = 'Czech Republic'
-GROUP BY year
-ORDER BY year DESC;
+GROUP BY t1.current_year 
+ORDER BY t1.current_year;
